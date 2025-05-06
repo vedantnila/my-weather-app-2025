@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Simple Weather App</title>
+  <title>Weather App with Voice Assistant</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * {
@@ -10,7 +10,7 @@
     }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: url('weather app wallpaper.jpg') no-repeat center center fixed;
+      background: url('https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
       background-size: cover;
       margin: 0;
       padding: 0;
@@ -28,7 +28,7 @@
     h1 {
       margin-bottom: 20px;
     }
-    input[type="text"] {
+    input[type="text"], select {
       width: 80%;
       padding: 10px;
       font-size: 16px;
@@ -53,6 +53,11 @@
       font-size: 18px;
       line-height: 1.6;
     }
+    .weather-icon {
+      width: 80px;
+      height: 80px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -60,14 +65,49 @@
     <h1>Weather App</h1>
     <input type="text" id="locationInput" placeholder="Enter city name">
     <br>
+    <select id="language">
+      <option value="en">English</option>
+      <option value="hi">Hindi</option>
+    </select>
+    <br>
     <button onclick="getWeather()">Get Temperature</button>
     <div class="weather-result" id="weatherResult"></div>
   </div>
 
   <script>
+    function getAdviceByTemp(temp, lang) {
+      if (lang === 'hi') {
+        if (temp < 0) return "बहुत ठंडा: भारी सर्दी के कपड़े पहनें और बाहर ज्यादा देर न रहें।";
+        else if (temp < 10) return "ठंडा: गर्म जैकेट या स्वेटर पहनें।";
+        else if (temp < 20) return "हल्की ठंड: हल्के कपड़े ठीक हैं।";
+        else if (temp < 30) return "गर्म: हल्के और आरामदायक कपड़े पहनें। पानी पिएं।";
+        else if (temp < 35) return "बहुत गर्म: धूप से बचें और पानी पिएं।";
+        else return "अत्यधिक गर्म: बाहर जाना टालें और खूब पानी पिएं।";
+      } else {
+        if (temp < 0) return "🥶 Very Cold: Wear heavy winter clothes and avoid staying outside too long.";
+        else if (temp < 10) return "❄️ Cold: Wear a warm jacket or sweater.";
+        else if (temp < 20) return "🌤️ Cool: Light layers should be fine.";
+        else if (temp < 30) return "☀️ Warm: Wear light clothes and stay hydrated.";
+        else if (temp < 35) return "🔥 Hot: Stay cool, avoid peak sun, and drink water.";
+        else return "🥵 Very Hot: Avoid outdoor activities and drink plenty of water.";
+      }
+    }
+
+    function updateBackgroundByTemp(temp) {
+      let imageUrl = '';
+      if (temp < 0) imageUrl = 'https://images.unsplash.com/photo-1608889177128-09a0aef25e2b';
+      else if (temp < 10) imageUrl = 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d';
+      else if (temp < 20) imageUrl = 'https://images.unsplash.com/photo-1496560736404-68ddcb189a24';
+      else if (temp < 30) imageUrl = 'https://images.unsplash.com/photo-1597755951844-b1e4c7e6e612';
+      else imageUrl = 'https://images.unsplash.com/photo-1501973801540-537f08ccae7b';
+
+      document.body.style.backgroundImage = `url('${imageUrl}?auto=format&fit=crop&w=1350&q=80')`;
+    }
+
     async function getWeather() {
       const location = document.getElementById("locationInput").value.trim();
       const resultDiv = document.getElementById("weatherResult");
+      const language = document.getElementById("language").value;
 
       if (!location) {
         resultDiv.innerHTML = "Please enter a location.";
@@ -86,16 +126,26 @@
         } else {
           const temp = data.current.temp_c;
           const condition = data.current.condition.text;
+          const icon = data.current.condition.icon;
           const city = data.location.name;
           const country = data.location.country;
+          const advice = getAdviceByTemp(temp, language);
+
+          updateBackgroundByTemp(temp);
+
+          const message = language === 'hi'
+            ? `मौसम की जानकारी: ${city}, ${country} में तापमान ${temp} डिग्री सेल्सियस है और स्थिति है ${condition}. ${advice}`
+            : `The temperature in ${city}, ${country} is ${temp} degrees Celsius with ${condition}. ${advice}`;
 
           resultDiv.innerHTML = `
             <strong>${city}, ${country}</strong><br>
             Temperature: ${temp}°C<br>
-            Condition: ${condition}
+            Condition: ${condition}<br>
+            <img class="weather-icon" src="${icon}" alt="Weather icon"><br>
+            <em>${advice}</em>
           `;
 
-          setWeatherBackground(condition);
+          speakWeather(message, language);
         }
       } catch (error) {
         resultDiv.innerHTML = "Error fetching weather data.";
@@ -103,26 +153,21 @@
       }
     }
 
-    function setWeatherBackground(condition) {
-      let imageUrl;
+    function speakWeather(text, lang) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
+      utterance.pitch = 1;
+      utterance.rate = 1;
 
-      if (condition.includes("Sunny")) {
-        imageUrl = "https://source.unsplash.com/1600x900/?sunny";
-      } else if (condition.includes("Rain")) {
-        imageUrl = "https://source.unsplash.com/1600x900/?rain";
-      } else if (condition.includes("Snow")) {
-        imageUrl = "https://source.unsplash.com/1600x900/?snow";
-      } else if (condition.includes("Cloud")) {
-        imageUrl = "https://source.unsplash.com/1600x900/?cloudy";
-      } else if (condition.includes("Thunder")) {
-        imageUrl = "https://source.unsplash.com/1600x900/?thunderstorm";
-      } else {
-        imageUrl = "https://source.unsplash.com/1600x900/?weather";
-      }
+      const voices = speechSynthesis.getVoices();
+      const femaleVoice = voices.find(v => v.lang === utterance.lang && v.name.toLowerCase().includes("female"))
+                        || voices.find(v => v.lang === utterance.lang);
+      if (femaleVoice) utterance.voice = femaleVoice;
 
-      imageUrl += `&t=${new Date().getTime()}`; // cache buster
-      document.body.style.setProperty("background-image", `url('${imageUrl}')`, "important");
+      speechSynthesis.speak(utterance);
     }
+
+    window.speechSynthesis.onvoiceschanged = () => {};
   </script>
 </body>
 </html>
