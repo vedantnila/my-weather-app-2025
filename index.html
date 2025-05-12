@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Weather App with Voice Assistant</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- Leaflet CSS for map -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+  />
   <style>
     * {
       box-sizing: border-box;
@@ -23,7 +23,7 @@
     }
     .container {
       max-width: 400px;
-      margin: 100px auto;
+      margin: 100px auto 30px auto;
       background: rgba(0, 0, 0, 0.6);
       padding: 30px;
       border-radius: 12px;
@@ -32,7 +32,8 @@
     h1 {
       margin-bottom: 20px;
     }
-    input[type="text"], select {
+    input[type="text"],
+    select {
       width: 80%;
       padding: 10px;
       font-size: 16px;
@@ -62,33 +63,56 @@
       height: 80px;
       margin-top: 10px;
     }
+    #mapContainer {
+      text-align: center;
+      margin: 30px auto;
+      max-width: 600px;
+    }
+    #toggleMapBtn {
+      margin-bottom: 10px;
+      padding: 8px 16px;
+      background-color: #28a745;
+      border: none;
+      color: white;
+      font-size: 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #toggleMapBtn:hover {
+      background-color: #218838;
+    }
     #map {
       height: 400px;
-      margin: 20px;
       border: 3px solid white;
       border-radius: 12px;
+    }
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Weather App</h1>
-    <input type="text" id="locationInput" placeholder="Enter city name">
-    <button onclick="startVoiceInput()" title="Speak location">🎤</button><br>
+    <input type="text" id="locationInput" placeholder="Enter city name" />
+    <button onclick="startVoiceInput()" title="Speak City Name" style="margin-bottom: 10px;">🎤 </button>
+
+    <br />
     <select id="language">
       <option value="en">English</option>
       <option value="hi">Hindi</option>
-    </select><br>
+    </select>
+    <br />
     <button onclick="getWeather()">Get Temperature</button>
     <div class="weather-result" id="weatherResult"></div>
   </div>
 
-  <!-- World Map -->
-  <div id="map"></div>
+  <div id="mapContainer">
+    <button id="toggleMapBtn" onclick="toggleMap()">Hide Map</button>
+    <div id="map"></div>
+  </div>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
     function getAdviceByTemp(temp, lang) {
       if (lang === 'hi') {
@@ -112,11 +136,11 @@
       let imageUrl = '';
       if (temp < 0) imageUrl = 'wp5076054.jpg';
       else if (temp < 10) imageUrl = 'th.jpg';
-      else if (temp < 20) imageUrl = 'leaves-against-blue-sky-with-bright-sunshine-sunny-sky-background-ai-generative-photo.jpg';
+      else if (temp < 20) imageUrl = 'leaves-against-blue-sky-with-bright-sunshine-sunny-sky-background-sun-and-leaves-wallpaper-natural-background-ai-generative-photo.jpg';
       else if (temp < 30) imageUrl = '380553-sunny-day-wallpaper.jpg';
       else imageUrl = 'stock-photo-hot-temperature-thermometer-on-yellow-sky-with-sun-shining-in-summer-show-higher-weather-concept-2180966313.jpg';
 
-      document.body.style.backgroundImage = `url('${imageUrl}')`;
+      document.body.style.backgroundImage = `url('${imageUrl}?auto=format&fit=crop&w=1350&q=80')`;
     }
 
     async function getWeather() {
@@ -176,60 +200,102 @@
 
       const voices = speechSynthesis.getVoices();
       const femaleVoice = voices.find(v => v.lang === utterance.lang && v.name.toLowerCase().includes("female"))
-                        || voices.find(v => v.lang === utterance.lang);
+        || voices.find(v => v.lang === utterance.lang);
       if (femaleVoice) utterance.voice = femaleVoice;
 
       speechSynthesis.speak(utterance);
     }
 
-    function startVoiceInput() {
-      if (!('webkitSpeechRecognition' in window)) {
-        alert("Speech recognition not supported in this browser.");
-        return;
+    function toggleMap() {
+      const mapDiv = document.getElementById('map');
+      const button = document.getElementById('toggleMapBtn');
+
+      if (mapDiv.classList.contains('hidden')) {
+        mapDiv.classList.remove('hidden');
+        button.textContent = 'Hide Map';
+      } else {
+        mapDiv.classList.add('hidden');
+        button.textContent = 'Show Map';
       }
-
-      const recognition = new webkitSpeechRecognition();
-      recognition.lang = document.getElementById("language").value === 'hi' ? 'hi-IN' : 'en-US';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        document.getElementById("locationInput").value = transcript;
-        getWeather();
-      };
-
-      recognition.onerror = function(event) {
-        console.error("Speech recognition error", event.error);
-      };
-
-      recognition.start();
     }
 
-    window.speechSynthesis.onvoiceschanged = () => {};
-
-    // Interactive Map
+    // Initialize Leaflet map
     const map = L.map('map').setView([20, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+      maxZoom: 18,
     }).addTo(map);
 
-    map.on('click', async function(e) {
+    map.on('click', async function (e) {
       const lat = e.latlng.lat;
       const lon = e.latlng.lng;
+      const language = document.getElementById("language").value;
+
       const apiKey = 'e18d02ab2ff94a89a0051131250305';
       const apiUrl = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${lat},${lon}&aqi=no`;
+
+      const resultDiv = document.getElementById("weatherResult");
 
       try {
         const response = await fetch(apiUrl);
         const data = await response.json();
-        const city = data.location.name;
-        document.getElementById("locationInput").value = city;
-        getWeather();
+
+        if (data.error) {
+          resultDiv.innerHTML = `Error: ${data.error.message}`;
+        } else {
+          const temp = data.current.temp_c;
+          const condition = data.current.condition.text;
+          const icon = data.current.condition.icon;
+          const city = data.location.name;
+          const country = data.location.country;
+          const advice = getAdviceByTemp(temp, language);
+
+          updateBackgroundByTemp(temp);
+
+          const message = language === 'hi'
+            ? `मौसम की जानकारी: ${city}, ${country} में तापमान ${temp} डिग्री सेल्सियस है और स्थिति है ${condition}. ${advice}`
+            : `The temperature in ${city}, ${country} is ${temp} degrees Celsius with ${condition}. ${advice}`;
+
+          resultDiv.innerHTML = `
+            <strong>${city}, ${country}</strong><br>
+            Temperature: ${temp}°C<br>
+            Condition: ${condition}<br>
+            <img class="weather-icon" src="${icon}" alt="Weather icon"><br>
+            <em>${advice}</em>
+          `;
+
+          speakWeather(message, language);
+        }
       } catch (error) {
-        console.error("Map click error", error);
+        resultDiv.innerHTML = "Error fetching weather data.";
+        console.error(error);
       }
     });
+
+    window.speechSynthesis.onvoiceschanged = () => {};
+    function startVoiceInput() {
+  if (!('webkitSpeechRecognition' in window)) {
+    alert("Your browser does not support voice recognition. Please use Chrome.");
+    return;
+  }
+
+  const recognition = new webkitSpeechRecognition();
+  recognition.lang = document.getElementById("language").value === "hi" ? "hi-IN" : "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.start();
+
+  recognition.onresult = (event) => {
+    const spokenText = event.results[0][0].transcript;
+    document.getElementById("locationInput").value = spokenText;
+  };
+
+  recognition.onerror = (event) => {
+    console.error("Voice input error:", event.error);
+    alert("Voice recognition error. Please try again.");
+  };
+}
+
   </script>
 </body>
 </html>
