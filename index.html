@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <title>Weather App with Voice Assistant</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Leaflet CSS for map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  
   <style>
     * {
       box-sizing: border-box;
@@ -58,22 +62,32 @@
       height: 80px;
       margin-top: 10px;
     }
+    #map {
+      height: 400px;
+      margin: 20px;
+      border: 3px solid white;
+      border-radius: 12px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Weather App</h1>
     <input type="text" id="locationInput" placeholder="Enter city name">
-    <button onclick="startVoiceInput()" title="Speak location">🎤</button>
-    <br>
+    <button onclick="startVoiceInput()" title="Speak location">🎤</button><br>
     <select id="language">
       <option value="en">English</option>
       <option value="hi">Hindi</option>
-    </select>
-    <br>
+    </select><br>
     <button onclick="getWeather()">Get Temperature</button>
     <div class="weather-result" id="weatherResult"></div>
   </div>
+
+  <!-- World Map -->
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
   <script>
     function getAdviceByTemp(temp, lang) {
@@ -86,9 +100,9 @@
         else return "अत्यधिक गर्म: बाहर जाना टालें और खूब पानी पिएं।";
       } else {
         if (temp < 0) return "🥶 Very Cold: Wear heavy winter clothes and avoid staying outside too long.";
-        else if (temp < 10) return "❄️ Cold: Wear a warm jacket or sweater.";
-        else if (temp < 20) return "🌤️ Cool: Light layers should be fine.";
-        else if (temp < 30) return "☀️ Warm: Wear light clothes and stay hydrated.";
+        else if (temp < 10) return "❄ Cold: Wear a warm jacket or sweater.";
+        else if (temp < 20) return "🌤 Cool: Light layers should be fine.";
+        else if (temp < 30) return "☀ Warm: Wear light clothes and stay hydrated.";
         else if (temp < 35) return "🔥 Hot: Stay cool, avoid peak sun, and drink water.";
         else return "🥵 Very Hot: Avoid outdoor activities and drink plenty of water.";
       }
@@ -98,11 +112,11 @@
       let imageUrl = '';
       if (temp < 0) imageUrl = 'wp5076054.jpg';
       else if (temp < 10) imageUrl = 'th.jpg';
-      else if (temp < 20) imageUrl = 'leaves-against-blue-sky-with-bright-sunshine-sunny-sky-background-sun-and-leaves-wallpaper-natural-background-ai-generative-photo.jpg';
+      else if (temp < 20) imageUrl = 'leaves-against-blue-sky-with-bright-sunshine-sunny-sky-background-ai-generative-photo.jpg';
       else if (temp < 30) imageUrl = '380553-sunny-day-wallpaper.jpg';
       else imageUrl = 'stock-photo-hot-temperature-thermometer-on-yellow-sky-with-sun-shining-in-summer-show-higher-weather-concept-2180966313.jpg';
 
-      document.body.style.backgroundImage = `url('${imageUrl}?auto=format&fit=crop&w=1350&q=80')`;
+      document.body.style.backgroundImage = `url('${imageUrl}')`;
     }
 
     async function getWeather() {
@@ -168,31 +182,54 @@
       speechSynthesis.speak(utterance);
     }
 
-    window.speechSynthesis.onvoiceschanged = () => {};
     function startVoiceInput() {
-  if (!('webkitSpeechRecognition' in window)) {
-    alert("Speech recognition not supported in this browser.");
-    return;
-  }
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("Speech recognition not supported in this browser.");
+        return;
+      }
 
-  const recognition = new webkitSpeechRecognition();
-  recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = document.getElementById("language").value === 'hi' ? 'hi-IN' : 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
 
-  recognition.onresult = function(event) {
-    const transcript = event.results[0][0].transcript;
-    document.getElementById("locationInput").value = transcript;
-    getWeather(); // Automatically fetch weather after voice input
-  };
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("locationInput").value = transcript;
+        getWeather();
+      };
 
-  recognition.onerror = function(event) {
-    console.error("Speech recognition error", event.error);
-  };
+      recognition.onerror = function(event) {
+        console.error("Speech recognition error", event.error);
+      };
 
-  recognition.start();
-}
+      recognition.start();
+    }
 
+    window.speechSynthesis.onvoiceschanged = () => {};
+
+    // Interactive Map
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    map.on('click', async function(e) {
+      const lat = e.latlng.lat;
+      const lon = e.latlng.lng;
+      const apiKey = 'e18d02ab2ff94a89a0051131250305';
+      const apiUrl = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${lat},${lon}&aqi=no`;
+
+      try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        const city = data.location.name;
+        document.getElementById("locationInput").value = city;
+        getWeather();
+      } catch (error) {
+        console.error("Map click error", error);
+      }
+    });
   </script>
 </body>
 </html>
