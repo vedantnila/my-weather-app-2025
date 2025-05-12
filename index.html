@@ -64,6 +64,7 @@
   <div class="container">
     <h1>Weather App</h1>
     <input type="text" id="locationInput" placeholder="Enter city name">
+    <button onclick="startVoiceInput()" title="Speak location">🎤</button>
     <br>
     <select id="language">
       <option value="en">English</option>
@@ -168,6 +169,30 @@
     }
 
     window.speechSynthesis.onvoiceschanged = () => {};
+    function startVoiceInput() {
+  if (!('webkitSpeechRecognition' in window)) {
+    alert("Speech recognition not supported in this browser.");
+    return;
+  }
+
+  const recognition = new webkitSpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = function(event) {
+    const transcript = event.results[0][0].transcript;
+    document.getElementById("locationInput").value = transcript;
+    getWeather(); // Automatically fetch weather after voice input
+  };
+
+  recognition.onerror = function(event) {
+    console.error("Speech recognition error", event.error);
+  };
+
+  recognition.start();
+}
+
   </script>
 </body>
 </html>
